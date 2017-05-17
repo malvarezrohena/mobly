@@ -61,17 +61,26 @@ class UtilsTest(unittest.TestCase):
             utils.get_available_host_port()
 
     @mock.patch(
-        'mobly.controllers.android_device_lib.adb.list_occupied_adb_ports')
+        'mobly.controllers.android_device_lib.adb.list_occupied_adb_ports')    
     def test_get_available_port_returns_free_port(
             self, mock_list_occupied_adb_ports):
+        """This test checks we can bind to a socket on the port returned by portpicker 
+        and should pass as long as we can bind to either an ipv4 or ipv6 socket on 
+        such port."""
         port = utils.get_available_host_port()
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        try:
-            s.bind(('localhost', port))
-        finally:
-            s.close()
-
+        got_socket = False
+        for family in (socket.AF_INET6, socket.AF_INET):
+            try:
+                s = socket.socket(family, socket.SOCK_STREAM)
+                got_socket = True
+            except socket.error:
+                continue
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                s.bind(('localhost', port))
+            finally:
+                s.close()
+        self.assertTrue(got_socket)
 
 if __name__ == '__main__':
     unittest.main()
